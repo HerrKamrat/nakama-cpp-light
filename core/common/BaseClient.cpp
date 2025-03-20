@@ -21,7 +21,7 @@
 #include "nakama-cpp/realtime/NWebsocketsFactory.h"
 #include "nakama-cpp/NException.h"
 #include "BaseClient.h"
-#include "../core-rt/NRtClient.h"
+// #include "../core-rt/NRtClient.h"
 
 namespace Nakama
 {
@@ -35,6 +35,7 @@ NRtClientPtr BaseClient::createRtClient()
 
 NRtClientPtr BaseClient::createRtClient(NRtTransportPtr transport)
 {
+#if 0
     RtClientParameters parameters;
     parameters.host = _host;
     parameters.port = _port;
@@ -49,6 +50,9 @@ NRtClientPtr BaseClient::createRtClient(NRtTransportPtr transport)
 
     NRtClientPtr client(new NRtClient(transport, parameters.host, parameters.port, parameters.ssl));
     return client;
+#else
+    return {};
+#endif
 }
 
 std::future<NSessionPtr> BaseClient::authenticateDeviceAsync(

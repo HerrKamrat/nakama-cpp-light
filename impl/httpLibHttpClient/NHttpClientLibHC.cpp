@@ -64,13 +64,14 @@ NHttpClientLibHC::NHttpClientLibHC(const NPlatformParameters& platformParams):
     configureNLogger();
 
 #ifdef __ANDROID__
-    #error libhttpclient is not currently supported on Android in libnakama!
+    HCInitArgs initArgsParam{platformParams.javaVM, platformParams.applicationContext};
+    HRESULT hr = HCInitialize(&initArgsParam);
 #else
     (void)platformParams;
     HCInitArgs* initArgsParam = nullptr;
+    HRESULT hr = HCInitialize(initArgsParam);
 #endif
 
-    HRESULT hr = HCInitialize(initArgsParam);
     if (FAILED(hr)) {
         HC_TRACE_ERROR_HR(httpTransportLibHC, hr, "HCInitialize failed");
     }

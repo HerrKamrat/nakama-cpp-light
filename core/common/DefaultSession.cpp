@@ -18,7 +18,7 @@
 #include "StrUtil.h"
 #include "nakama-cpp/NUtils.h"
 #include "nakama-cpp/log/NLogger.h"
-#include "RapidjsonHelper.h"
+#include "nlohmann/json.hpp"
 
 #undef NMODULE_NAME
 #define NMODULE_NAME "Nakama::DefaultSession"
@@ -35,83 +35,66 @@ DefaultSession::DefaultSession(const std::string& token, const std::string& refr
     _create_time = getUnixTimestampMs();
 
     std::string tokenJson = this->jwtUnpack(token);
-
-    rapidjson::Document document;
-
     // now we have some json to parse.
     // e.g.: {"exp":1489862293,"uid":"3c01e3ee-878a-4ec4-8923-40d51a86f91f"}
-    if (document.Parse(tokenJson).HasParseError())
-    {
-        NLOG_ERROR("Parse JSON failed for token.");
-    }
-    else
-    {
-        if (document.HasMember("exp"))
-        {
+    try {
+        using Json = nlohmann::json;
+        Json document = Json::parse(tokenJson);
+
+        if (document.contains("exp")) {
             auto& jsonExp = document["exp"];
-            if (jsonExp.IsNumber())
-            {
-                _expire_time = (jsonExp.GetUint64()) * 1000ULL;
+            if (jsonExp.is_number_unsigned()) {
+                _expire_time = (jsonExp.get<uint64_t>()) * 1000ULL;
             }
         }
 
-        if (document.HasMember("usn"))
-        {
+        if (document.contains("usn")) {
             auto& jsonUsn = document["usn"];
-            if (jsonUsn.IsString()) _username = jsonUsn.GetString();
+            if (jsonUsn.is_string())
+                _username = jsonUsn;
         }
 
-        if (document.HasMember("uid"))
-        {
+        if (document.contains("uid")) {
             auto& jsonUid = document["uid"];
-            if (jsonUid.IsString()) _user_id = jsonUid.GetString();
+            if (jsonUid.is_string())
+                _user_id = jsonUid;
         }
 
-        if (document.HasMember("vrs"))
-        {
+        if (document.contains("vrs")) {
             auto& jsonVrs = document["vrs"];
-            if (jsonVrs.IsObject())
-            {
-                auto object = jsonVrs.GetObject();
-                for (auto it = object.begin(); it != object.end(); ++it)
-                {
-                    if (it->value.IsString())
-                        _variables.emplace(it->name.GetString(), it->value.GetString());
-                    else
-                    {
-                        NLOG_WARN("Non-string value is ignored: " + string(it->name.GetString()));
+            if (jsonVrs.is_object()) {
+                for (auto it = jsonVrs.begin(); it != jsonVrs.end(); ++it) {
+                    if (it.value().is_string())
+                        _variables.emplace(it.key(), it.value().get<string>());
+                    else {
+                        NLOG_WARN("Non-string value is ignored: " + it.key());
                     }
                 }
             }
         }
 
-
         // Check if empty in case server has not updated to use refresh tokens yet.
-        if (!refreshToken.empty())
-        {
+        if (!refreshToken.empty()) {
             std::string refreshTokenJson = this->jwtUnpack(refreshToken);
 
-            rapidjson::Document doc;
-
-            if (doc.Parse(refreshTokenJson).HasParseError())
-            {
-                NLOG_ERROR("Parse JSON failed for refresh token.");
+            try {
+                Json doc = Json::parse(refreshTokenJson);
+                if (doc.contains("exp")) {
+                    auto& jsonExp = doc["exp"];
+                    if (jsonExp.is_number_unsigned()) {
+                        _refresh_expire_time = (jsonExp.get<uint64_t>()) * 1000ULL;
+                    }
+                } else {
+                    NLOG_ERROR("Could not find expiry on refresh token.");
+                }
+            } catch (const nlohmann::json::parse_error& e) {
+                NLOG_ERROR("Parse JSON failed for refresh token. Error: " + string(e.what()));
                 return;
             }
-
-            if (doc.HasMember("exp"))
-            {
-                auto& jsonExp = doc["exp"];
-                if (jsonExp.IsNumber())
-                {
-                    _refresh_expire_time = (jsonExp.GetUint64()) * 1000ULL;
-                }
-            }
-            else
-            {
-                NLOG_ERROR("Could not find expiry on refresh token.");
-            }
         }
+    } catch (const nlohmann::json::parse_error& e) {
+        NLOG_ERROR("Parse JSON failed for token. Error: " + string(e.what()));
+        return;
     }
 }
 

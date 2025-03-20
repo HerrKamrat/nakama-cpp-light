@@ -17,17 +17,40 @@
 #pragma once
 
 #include "../common/BaseClient.h"
-#include <google/protobuf/message.h>
 #include <set>
 
 namespace Nakama {
+
+    struct Message {
+        virtual void from_json_string(const std::string& json) = 0;
+    };
+
+    template<typename Data>
+    struct DataWriter
+    {
+        static Data from_json_string(const std::string& json)
+        {
+            return {};
+        }
+    };
+
+    template<typename Data>
+    struct DataMessage : public Message
+    {
+        Data data;
+
+        void from_json_string(const std::string& json) override
+        {
+            data = DataWriter<Data>::from_json_string(json);
+        }
+    };
 
     struct RestReqContext
     {
         std::string auth;
         std::function<void()> successCallback;
         ErrorCallback errorCallback;
-        google::protobuf::Message* data = nullptr;
+        Message* data = nullptr;
     };
 
     /**
@@ -614,7 +637,7 @@ namespace Nakama {
         ) override;
 
     private:
-        RestReqContext* createReqContext(google::protobuf::Message* data);
+        RestReqContext* createReqContext(Message* data);
         void setBasicAuth(RestReqContext* ctx);
         void setSessionAuth(RestReqContext* ctx, NSessionPtr session);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 The Nakama Authors
+ * Copyright 2019 The Nakama Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,14 @@
  * limitations under the License.
  */
 
-#pragma once
+ #include "nakama-cpp/NakamaVersion.h"
 
-#include <nakama-cpp/NTypes.h>
-
-#ifdef __ANDROID__
-#include "jni.h"
-#endif
-
-NAKAMA_NAMESPACE_BEGIN
-
-// Keeping for API stability in the case that we need to add platform-specific features.
-struct NPlatformParameters {
-#ifdef __ANDROID__
-    JavaVM* javaVM;
-    jobject applicationContext;
-#endif
-};
-
-NAKAMA_NAMESPACE_END
+ namespace Nakama {
+ 
+ const char* getNakamaSdkVersion()
+ {
+     return "2.8.5@ nakama-light";
+ }
+ 
+ }
+ 

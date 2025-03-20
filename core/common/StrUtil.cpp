@@ -16,7 +16,7 @@
 
 #include <sstream>
 #include "StrUtil.h"
-#include <google/protobuf/stubs/strutil.h>
+#include <base64.hpp>
 
 #include <regex>
 
@@ -24,31 +24,34 @@ namespace Nakama {
 
 using namespace std;
 
-std::string base64Encode(const Base64Buffer& buffer)
-{
+std::string base64Encode(const Base64Buffer& buffer) {
     std::string base64str;
-
-    google::protobuf::Base64Escape((const unsigned char *)buffer.data(), static_cast<int>(buffer.size()), &base64str, true);
-
-    return base64str;
+    return base64::to_base64(buffer);
 }
 
-std::string base64EncodeUrl(const Base64Buffer& buffer)
-{
-    std::string base64str;
+std::string base64EncodeUrl(const Base64Buffer& buffer) {
+    auto res = base64::to_base64(buffer);
+    std::replace(res.begin(), res.end(), '+', '-');
+    std::replace(res.begin(), res.end(), '/', '_');
 
-    google::protobuf::WebSafeBase64Escape((const unsigned char *)buffer.data(), static_cast<int>(buffer.size()), &base64str, true);
+    // Remove padding
+    while (res.back() == '=') {
+        res.pop_back();
+    }
 
-    return base64str;
+    return res;
 }
 
-Base64Buffer base64DecodeUrl(const std::string& base64str)
-{
-    Base64Buffer buffer;
+Base64Buffer base64DecodeUrl(const std::string& base64str) {
+    auto res = base64str;
+    std::replace(res.begin(), res.end(), '-', '+');
+    std::replace(res.begin(), res.end(), '_', '/');
 
-    google::protobuf::WebSafeBase64Unescape(base64str, &buffer);
+    while (res.size() % 4) {
+        res.push_back('=');
+    }
 
-    return buffer;
+    return base64::from_base64(res);
 }
 
 std::string encodeURIComponent(std::string decoded)
